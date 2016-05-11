@@ -8,7 +8,7 @@
 
 enum NodeKind
 {
-    StmtK, ExpK
+    StmtSeqK, StmtK, ExprK
 };
 
 enum StmtKind
@@ -29,27 +29,65 @@ enum ExprType
 
 struct TreeNode
 {
-    enum { child_size = 3 };
+    TreeNode()
+        : child(0)
+        , sibling(0)
+        , line_no(0)
+    {
+    }
 
-    TreeNode * child[child_size];
+    TreeNode * child;
     TreeNode * sibling;
     size_t line_no;
     NodeKind kind;
 
-    union
-    {
-        StmtKind stmt;
-        ExprKind expr;
-    } sub_kind;
+    StmtKind stmt_kind;
+    ExprKind expr_kind;
 
-    union
-    {
-        TokenType op;
-        int val;
-        std::string name;
-    } attr;
+    TokenType op;
+    int value;
+    std::string name;
 
-    ExprType type;
+    //type check
+    ExprType expr_type;
 };
+
+
+//struct StmtNode : public TreeNode
+//{
+//    StmtNode() : kind(StmtK) {}
+//
+//    StmtKind stmt_kind;
+//};
+//
+//struct ExprNode : public TreeNode
+//{
+//    ExprNode() : kind(ExprK) {}
+//
+//    ExprKind expr_kind;
+//};
+//
+//struct IdNode : public ExprNode
+//{
+//    IdNode() : expr_kind(IdK) {}
+//
+//    std::string name;
+//};
+//
+//struct ConstNode : public ExprNode
+//{
+//    ConstNode() : expr_kind(ConstK) {}
+//
+//    int value;
+//};
+//
+//struct OpNode : public ExprNode
+//{
+//    OpNode() : expr_kind(OpK) {}
+//
+//    TokenType op;
+//};
+
+
 
 #endif // TREENODE_H
