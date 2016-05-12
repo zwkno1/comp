@@ -4,26 +4,35 @@
 #include <unordered_map>
 #include <list>
 
+#include "parser.h"
+
 struct TreeNode;
 
 
 struct Symbol
 {
-    size_t line_no;
     std::string name;
     size_t location;
+    std::list<size_t> lines;
 };
 
 class Analyzer
 {
 public:
-    Analyzer(TreeNode * t);
-    void type_check();
-    void build_symbol_table();
+    Analyzer(Parser & parser);
+    void analysis();
+
+    TreeNode * root() { return parser_.root(); }
+
     size_t find_symbol(const std::string & name);
+
     void print_symbol_table();
 
 private:
+
+    void type_check();
+    void build_symbol_table();
+
     void traverse(TreeNode * t, auto pre, auto post);
     void check_node(TreeNode * t);
     void type_check_error(TreeNode * t, const char *);
@@ -33,10 +42,10 @@ private:
 
     void insert_symbol(TreeNode * t);
 
-    std::unordered_map<std::string, std::list<Symbol> > symbol_table_;
-    size_t location_;
+    Parser & parser_;
 
-    TreeNode * root_;
+    std::unordered_map<std::string, Symbol> symbol_table_;
+    size_t location_;
 };
 
 #endif // ANALYZER_H

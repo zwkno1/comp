@@ -2,20 +2,26 @@
 #include "treenode.h"
 #include <iostream>
 
-Analyzer::Analyzer(TreeNode * t)
-    : root_(t)
+Analyzer::Analyzer(Parser & parser)
+    : parser_(parser)
     , location_(0)
 {
 }
 
+void Analyzer::analysis()
+{
+    type_check();
+    build_symbol_table();
+}
+
 void Analyzer::type_check()
 {
-    type_check(root_);
+    type_check(root());
 }
 
 void Analyzer::build_symbol_table()
 {
-    build_symbol_table(root_);
+    build_symbol_table(root());
 }
 
 void Analyzer::type_check(TreeNode * t)
@@ -31,7 +37,7 @@ void Analyzer::type_check(TreeNode * t)
 
 void Analyzer::build_symbol_table(TreeNode *t)
 {
-    traverse(root_, [this](TreeNode *t)
+    traverse(root(), [this](TreeNode *t)
     {
         switch (t->kind)
         {
@@ -152,20 +158,20 @@ void Analyzer::insert_symbol(TreeNode * t)
     auto it = symbol_table_.find(t->name);
     if(it == symbol_table_.end())
     {
-        symbol_table_[t->name] = std::list<Symbol>{ Symbol{ t->line_no, t->name, ++location_} };
+        symbol_table_[t->name] = Symbol{ t->name, location_++, { t->line_no } };
     }
     else
     {
-        it->second.push_back(Symbol{ t->line_no, t->name, 0});
+        it->second.lines.push_back(t->line_no);
     }
 }
 
 size_t Analyzer::find_symbol(const std::string & name)
 {
     auto iter = symbol_table_.find(name);
-    if(iter != symbol_table_.end() && !iter->second.empty())
+    if(iter != symbol_table_.end())
     {
-        return iter->second.front().location;
+        return iter->second.location;
     }
     return 0;
 }
@@ -174,9 +180,11 @@ void Analyzer::print_symbol_table()
 {
     for(auto & i : symbol_table_)
     {
-        for(auto & j : i.second)
+        std::cout << i.second.name << " >>> location: " << i.second.location << "\n";
+        for(auto & j : i.second.lines)
         {
-            std::cout << j.name << " >>> location: " << j.location << ", line: " << j.line_no << std::endl;
+            std::cout << "\tline: " << j+1 << "\n";
         }
     }
+    std::cout << std::endl;
 }

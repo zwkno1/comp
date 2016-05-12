@@ -4,6 +4,7 @@
 #include "scanner.h"
 #include "parser.h"
 #include "analyzer.h"
+#include "generator.h"
 
 using namespace std;
 namespace test
@@ -174,12 +175,14 @@ void parser_test(const std::string & file_path)
         Scanner s(fs);
         Parser p(s);
         p.parse();
-        TreeNode * root = p.root();
-        Analyzer a(root);
-        a.type_check();
-        a.build_symbol_table();
+
+        Analyzer a(p);
+        a.analysis();
         a.print_symbol_table();
-        print_stmtseq(root);
+        print_stmtseq(a.root());
+
+        Generator g(a);
+        g.gen_code();
     }
     catch(...)
     {
@@ -192,4 +195,26 @@ void parser_test(const std::string & file_path)
 int main(int argc, char *argv[])
 {
     test::parser_test("/home/zwk/loucomp/comp/sample.tny");
+    if(argc != 2)
+        return -1;
+    try
+    {
+        std::fstream f(argv[1]);
+        Scanner s(f);
+
+        Parser p(s);
+        p.parse();
+
+        Analyzer a(p);
+        a.analysis();
+
+        Generator g(a);
+        g.gen_code();
+    }
+    catch(...)
+    {
+        return -1;
+    }
+
+    return 0;
 }
