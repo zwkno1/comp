@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <fstream>
 #include <sstream>
+#include <cstring>
 
 enum OpClass
 {
@@ -29,13 +30,13 @@ enum OpCode
 
     /* RA instructions */
     opLDA,     /* RA     reg(r) = d+reg(s) */
-    opLDC,     /* RA     reg(r) = d ; reg(s) is ignored */
-    opJLT,     /* RA     if reg(r)<0 then reg(7) = d+reg(s) */
-    opJLE,     /* RA     if reg(r)<=0 then reg(7) = d+reg(s) */
-    opJGT,     /* RA     if reg(r)>0 then reg(7) = d+reg(s) */
-    opJGE,     /* RA     if reg(r)>=0 then reg(7) = d+reg(s) */
-    opJEQ,     /* RA     if reg(r)==0 then reg(7) = d+reg(s) */
-    opJNE,     /* RA     if reg(r)!=0 then reg(7) = d+reg(s) */
+    opLDC,     /* RA     reg(r) = d; reg(s) ss ignored */
+    opJLT,     /* RA     ifreg(r)<0 then reg(7) = d+reg(s) */
+    opJLE,     /* RA     ifreg(r)<=0 then reg(7) = d+reg(s) */
+    opJGT,     /* RA     ifreg(r)>0 then reg(7) = d+reg(s) */
+    opJGE,     /* RA     ifreg(r)>=0 then reg(7) = d+reg(s) */
+    opJEQ,     /* RA     ifreg(r)==0 then reg(7) = d+reg(s) */
+    opJNE,     /* RA     ifreg(r)!=0 then reg(7) = d+reg(s) */
     opRALim    /* Limit of RA opcodes */
 };
 
@@ -45,7 +46,9 @@ enum Result
     srHALT,
     srIMEM_ERR,
     srDMEM_ERR,
-    srZERODIVIDE
+    srZERODIVIDE,
+    srINVALIDINPUT,
+    srINVALIDOPCLASS
 };
 
 struct Instrcution
@@ -70,7 +73,7 @@ const int DADDR_SIZE = 1024; /* increase for large programs */
 const int NO_REGS = 8;
 const int PC_REG = 7;
 
-INSTRUCTION iMem [IADDR_SIZE];
+Instrcution iMem [IADDR_SIZE];
 int dMem [DADDR_SIZE];
 int reg [NO_REGS];
 
@@ -83,11 +86,23 @@ const char * opCodeTab[] =
     /* RA opcodes */
 };
 
-const char * stepResultTab[] =
+const char * resultTab[] =
 {
-    "OK","Halted","Instruction Memory Fault",
-    "Data Memory Fault","Division by 0"
+    "OK",
+    "Halted",
+    "Instruction Memory Fault",
+    "Data Memory Fault",
+    "Division by 0",
+    "Invalid Input",
+    "Invalid Instruction",
 };
+
+void init()
+{
+    std::memset(reg, 0, NO_REGS);
+    std::memset(dMem, 0, DADDR_SIZE);
+    dMem[0] = DADDR_SIZE - 1;
+}
 
 int getOpClass(int op)
 {
@@ -99,144 +114,237 @@ int getOpClass(int op)
         return opclRA;
 }
 
-void printRegs()
+int readInstructions(std::istream & is)
 {
-    for(int i = 0; i < NO_REGS; ++i)
+    std::string str;
+    while(std::getline(is, str))
     {
-        printf("%8d,", reg[i]);
-    }
-    printf("\n");
-}
+        std::stringstream ss(str);
+        Instrcution inst;
+        int loc = 0;
+        ss >> loc;
+        if(ss.fail())
+            return -1;
 
-void printMem()
-{
-    for(int i = 0; i < DADDR_SIZE; ++i)
-    {
-        printf("%d,", dMem[i]);
-    }
-    printf("\n");
-}
+        char ch;
+        ss >> ch;
+        if(ss.fail() || ch != ':')
+            return -1;
 
-int readInstructions()
-{
+        std::string opStr;
+        ss >> opStr;
+        if(ss.fail())
+            return -1;
+        while (inst.op < opRALim && opStr != opCodeTab[inst.op])
+            ++inst.op;
+        if(inst.op == opRALim || inst.op == opRMLim || inst.op == opRRLim)
+            return -1;
+
+        ss >> inst.arg1;
+        if(ss.fail())
+            return -1;
+        ss >> ch;
+        if(ss.fail() || ch != ',')
+            return -1;
+
+        ss >> inst.arg2;
+        if(ss.fail())
+            return -1;
+        switch (getOpClass(inst.op))
+        {
+        case opclRR:
+        {
+            ss >> ch;
+            if(ss.fail() || ch != ',')
+                return -1;
+            ss >> inst.arg3;
+            if(ss.fail())
+                return -1;
+        }
+            break;
+        case opclRA:
+        case opclRM:
+        {
+            ss >> ch;
+            if(ss.fail() || ch != '(')
+                return -1;
+            ss >> inst.arg3;
+            if(ss.fail())
+                return -1;
+            ss >> ch;
+            if(ss.fail() || ch != ')')
+                return -1;
+        }
+            break;
+        default:
+            return -1;
+            break;
+        }
+        if(loc >= IADDR_SIZE)
+            return -1;
+        iMem[loc] = inst;
+    }
+    return 1;
 }
 
 Result step()
 {
-    INSTRUCTION currentinstruction  ;
-    int pc  ;
-    int r,s,t,m  ;
-    int ok ;
+    int pc = reg[PC_REG];
+    int r, s, t, m;
+    if((pc < 0) || (pc > IADDR_SIZE)  )
+        return srIMEM_ERR;
+    reg[PC_REG] = pc + 1;
 
-    pc = reg[PC_REG] ;
-    if ( (pc < 0) || (pc > IADDR_SIZE)  )
-        return srIMEM_ERR ;
-    reg[PC_REG] = pc + 1 ;
-    currentinstruction = iMem[ pc ] ;
-    switch (opClass(currentinstruction.iop) )
-    { case opclRR :
-        /***********************************/
-        r = currentinstruction.iarg1 ;
-        s = currentinstruction.iarg2 ;
-        t = currentinstruction.iarg3 ;
+    Instrcution & currentinstruction = iMem[pc];
+    switch (getOpClass(currentinstruction.op) )
+    {
+    case opclRR:
+        r = currentinstruction.arg1;
+        s = currentinstruction.arg2;
+        t = currentinstruction.arg3;
         break;
-
-    case opclRM :
-        /***********************************/
-        r = currentinstruction.iarg1 ;
-        s = currentinstruction.iarg3 ;
-        m = currentinstruction.iarg2 + reg[s] ;
-        if ( (m < 0) || (m > DADDR_SIZE))
-            return srDMEM_ERR ;
+    case opclRM:
+        r = currentinstruction.arg1;
+        s = currentinstruction.arg3;
+        m = currentinstruction.arg2 + reg[s];
+        if((m < 0) || (m > DADDR_SIZE))
+            return srDMEM_ERR;
         break;
-
-    case opclRA :
-        /***********************************/
-        r = currentinstruction.iarg1 ;
-        s = currentinstruction.iarg3 ;
-        m = currentinstruction.iarg2 + reg[s] ;
+    case opclRA:
+        r = currentinstruction.arg1;
+        s = currentinstruction.arg3;
+        m = currentinstruction.arg2 + reg[s];
         break;
-    } /* case */
+    }
 
-    switch ( currentinstruction.iop)
-    { /* RR instructions */
-    case opHALT :
-        /***********************************/
-        printf("HALT: %1d,%1d,%1d\n",r,s,t);
-        return srHALT ;
-        /* break; */
-
-    case opIN :
-        /***********************************/
-        do
-        { printf("Enter value for IN instruction: ") ;
-            fflush (stdin);
-            fflush (stdout);
-            gets(in_Line);
-            lineLen = strlen(in_Line) ;
-            inCol = 0;
-            ok = getNum();
-            if ( ! ok ) printf ("Illegal value\n");
-            else reg[r] = num;
-        }
-        while (! ok);
+    switch(currentinstruction.op)
+    {
+    /* RR instructions */
+    case opHALT:
+        return srHALT;
+    case opIN:
+    {
+        int num;
+		std::cout << "IN:";
+		std::cout.flush();
+        std::cin >> num;
+        if(std::cin.fail())
+            return srINVALIDINPUT;
+        reg[r] = num;
+    }
         break;
-
-    case opOUT :
-        printf ("OUT instruction prints: %d\n", reg[r] ) ;
+    case opOUT:
+        std::cout << "OUT:" << reg[r] << std::endl;
         break;
-    case opADD :  reg[r] = reg[s] + reg[t] ;  break;
-    case opSUB :  reg[r] = reg[s] - reg[t] ;  break;
-    case opMUL :  reg[r] = reg[s] * reg[t] ;  break;
-
-    case opDIV :
-        /***********************************/
-        if ( reg[t] != 0 ) reg[r] = reg[s] / reg[t];
-        else return srZERODIVIDE ;
+    case opADD: reg[r] = reg[s] + reg[t]; break;
+    case opSUB: reg[r] = reg[s] - reg[t]; break;
+    case opMUL: reg[r] = reg[s] * reg[t]; break;
+    case opDIV:
+        if(reg[t] == 0 )
+            return srZERODIVIDE;
+        reg[r] = reg[s] / reg[t];
         break;
 
         /*************** RM instructions ********************/
-    case opLD :    reg[r] = dMem[m] ;  break;
-    case opST :    dMem[m] = reg[r] ;  break;
+    case opLD: reg[r] = dMem[m]; break;
+    case opST: dMem[m] = reg[r]; break;
 
         /*************** RA instructions ********************/
-    case opLDA :    reg[r] = m ; break;
-    case opLDC :    reg[r] = currentinstruction.iarg2 ;   break;
-    case opJLT :    if ( reg[r] <  0 ) reg[PC_REG] = m ; break;
-    case opJLE :    if ( reg[r] <=  0 ) reg[PC_REG] = m ; break;
-    case opJGT :    if ( reg[r] >  0 ) reg[PC_REG] = m ; break;
-    case opJGE :    if ( reg[r] >=  0 ) reg[PC_REG] = m ; break;
-    case opJEQ :    if ( reg[r] == 0 ) reg[PC_REG] = m ; break;
-    case opJNE :    if ( reg[r] != 0 ) reg[PC_REG] = m ; break;
+    case opLDA: reg[r] = m; break;
+    case opLDC: reg[r] = currentinstruction.arg2; break;
+    case opJLT: if(reg[r] <  0 ) reg[PC_REG] = m; break;
+    case opJLE: if(reg[r] <= 0 ) reg[PC_REG] = m; break;
+    case opJGT: if(reg[r] >  0 ) reg[PC_REG] = m; break;
+    case opJGE: if(reg[r] >= 0 ) reg[PC_REG] = m; break;
+    case opJEQ: if(reg[r] == 0 ) reg[PC_REG] = m; break;
+    case opJNE: if(reg[r] != 0 ) reg[PC_REG] = m; break;
+    default:
+        return srINVALIDOPCLASS;
+    }
+    return srOKAY;
+}
 
-        /* end of legal instructions */
-    } /* case */
-    return srOKAY ;
-} /* stepTM */
-
-int main( int argc, char * argv[] )
+void printRegs()
 {
-    if (argc != 2)
+    std::cout << "-----------------------------------------------------------REG-----------------------------------------------------------" << std::endl;
+    for(int i = 0; i < NO_REGS; ++i)
     {
-        printf("usage: %s <filename>\n",argv[0]);
+        std::cout << std::setw(8) << reg[i] << ",";
+    }
+    std::cout << std::endl;
+}
+
+void printMem()
+{
+    std::cout << "-----------------------------------------------------------MEM-----------------------------------------------------------" << std::endl;
+    for(int i = 0; i < DADDR_SIZE; ++i)
+    {
+        std::cout <<  dMem[i] << ",";
+    }
+    std::cout << std::endl;
+}
+
+void printInstructions()
+{
+    for(int i = 0; i < IADDR_SIZE; ++i)
+    {
+        std::cout << std::setw(8) << i << ":"
+                  << std::setw(4) << opCodeTab[iMem[i].op]
+                  << iMem[i].arg1 << "," << iMem[i].arg2;
+        switch (getOpClass(iMem[i].op))
+        {
+        case opclRR:
+        {
+            std::cout << "," << iMem[i].arg3;
+        }
+            break;
+        case opclRA:
+        case opclRM:
+            std::cout << "(" << iMem[i].arg3 << ")";
+            break;
+        default:
+            break;
+        }
+        std::cout << std::endl;
+        if(iMem[i].op == opHALT)
+            break;
+    }
+}
+
+int main(int argc, char * argv[])
+{
+    if(argc != 2)
+    {
+        std::cout << "usage: " << argv[0] << " <filename>" << std::endl;
         return -1;
     }
-    std::
-    if (pgm == NULL)
-    { printf("file '%s' not found\n",pgmName);
-        exit(1);
+
+    std::ifstream ifs(argv[1]);
+
+    if(!ifs.is_open())
+    {
+        std::cout << "file '"<< argv[1] << "' not found" << std::endl;
+        return -1;
     }
 
-    /* read the program */
-    if ( ! readInstructions ())
-        exit(1) ;
-    /* switch input file to terminal */
-    /* reset( input ); */
-    /* read-eval-print */
-    printf("TM  simulation (enter h for help)...\n");
+    init();
+
+    if(readInstructions(ifs) != 1)
+        return -1;
+#ifdef DEBUG
+    printInstructions();
+#endif
+    Result ret;
     do
-        done = ! doCommand ();
-    while (! done );
-    printf("Simulation done.\n");
+    {
+#ifdef DEBUG
+        printRegs();
+        printMem();
+#endif
+        ret = step();
+    }while(ret == srOKAY);
+
+    std::cout << resultTab[ret] << std::endl;
+
     return 0;
 }

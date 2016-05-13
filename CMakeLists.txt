@@ -5,7 +5,7 @@ project(comp)
 set(CMAKE_CXX_FLAGS "-std=c++14")
 add_definitions("-Wall -Werror")
 
-#set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Debug)
 
 include_directories(.)
 set(SRCS
