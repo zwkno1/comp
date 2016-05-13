@@ -9,22 +9,22 @@ Parser::Parser(Scanner & s)
 {
 }
 
-void Parser::get_token()
+void Parser::getToken()
 {
     token_ = scanner_.getToken();
 }
 
 void Parser::parse()
 {
-    get_token();
-    root_ = stmt_sequence();
+    getToken();
+    root_ = stmtSequence();
     if(token_ != ENDFILE)
-        syntax_error("unexpected token");
+        syntaxError("unexpected token");
 }
 
-TreeNode * Parser::stmt_sequence()
+TreeNode * Parser::stmtSequence()
 {
-    TreeNode *sq = alloc_stmtseq();
+    TreeNode *sq = allocStmtSeq();
     TreeNode *t = 0;
     while(true)
     {
@@ -59,60 +59,60 @@ TreeNode * Parser::statement()
     switch (token_)
     {
     case IF:
-        return if_stmt();
+        return ifStmt();
         break;
     case REPEAT:
-        return repeat_stmt();
+        return repeatStmt();
         break;
     case ID:
-        return assign_stmt();
+        return assignStmt();
         break;
     case READ:
-        return read_stmt();
+        return readStmt();
         break;
     case WRITE:
-        return write_stmt();
+        return writeStmt();
         break;
     default:
-        get_token();
-        syntax_error("unexpected token");
+        getToken();
+        syntaxError("unexpected token");
         return 0;
         break;
     }
 }
 
-TreeNode * Parser::if_stmt()
+TreeNode * Parser::ifStmt()
 {
-    TreeNode * t = alloc_stmt(IfK);
+    TreeNode * t = allocStmt(IfK);
     match(IF);
     t->child = expr();
     match(THEN);
-    t->child->sibling = stmt_sequence();
+    t->child->sibling = stmtSequence();
     if(token_ == ELSE)
     {
         match(ELSE);
-        t->child->sibling->sibling = stmt_sequence();
+        t->child->sibling->sibling = stmtSequence();
     }
     match(END);
     return t;
 }
 
-TreeNode * Parser::repeat_stmt()
+TreeNode * Parser::repeatStmt()
 {
-    TreeNode * t = alloc_stmt(RepeatK);
+    TreeNode * t = allocStmt(RepeatK);
     match(REPEAT);
-    t->child = stmt_sequence();
+    t->child = stmtSequence();
     match(UNTIL);
     t->child->sibling = expr();
     return t;
 }
 
-TreeNode * Parser::assign_stmt()
+TreeNode * Parser::assignStmt()
 {
-    TreeNode * t = alloc_stmt(AssignK);
+    TreeNode * t = allocStmt(AssignK);
     if(token_ == ID)
     {
-        t->name = token_id();
+        t->name = tokenId();
     }
     match(ID);
     match(ASSIGN);
@@ -120,21 +120,21 @@ TreeNode * Parser::assign_stmt()
     return t;
 }
 
-TreeNode * Parser::read_stmt()
+TreeNode * Parser::readStmt()
 {
-    TreeNode * t = alloc_stmt(ReadK);
+    TreeNode * t = allocStmt(ReadK);
     match(READ);
     if(token_ == ID)
     {
-        t->name = token_id();
+        t->name = tokenId();
     }
     match(ID);
     return t;
 }
 
-TreeNode * Parser::write_stmt()
+TreeNode * Parser::writeStmt()
 {
-    TreeNode * t = alloc_stmt(WriteK);
+    TreeNode * t = allocStmt(WriteK);
     match(WRITE);
     t->child = expr();
     return t;
@@ -142,18 +142,18 @@ TreeNode * Parser::write_stmt()
 
 TreeNode * Parser::expr()
 {
-    TreeNode * t = simple_expr();
+    TreeNode * t = simpleExpr();
     switch (token_)
     {
     case EQ:
     case LT:
     {
-        TreeNode * p = alloc_expr(OpK);
+        TreeNode * p = allocExpr(OpK);
         p->child = t;
         p->op = token_;
         t = p;
         match(token_);
-        t->child->sibling = simple_expr();
+        t->child->sibling = simpleExpr();
     }
         break;
     default:
@@ -163,7 +163,7 @@ TreeNode * Parser::expr()
     return t;
 }
 
-TreeNode * Parser::simple_expr()
+TreeNode * Parser::simpleExpr()
 {
     TreeNode * t = term();
     while(true)
@@ -173,7 +173,7 @@ TreeNode * Parser::simple_expr()
         case ADD:
         case SUB:
         {
-            TreeNode * p = alloc_expr(OpK);
+            TreeNode * p = allocExpr(OpK);
             p->op =  token_;
             p->child = t;
             t = p;
@@ -198,7 +198,7 @@ TreeNode * Parser::term()
         case MUL:
         case DIV:
         {
-            TreeNode * p = alloc_expr(OpK);
+            TreeNode * p = allocExpr(OpK);
             p->op =  token_;
             p->child = t;
             t = p;
@@ -219,13 +219,13 @@ TreeNode * Parser::factor()
     switch (token_)
     {
     case NUM:
-        t = alloc_expr(ConstK);
-        t->value = token_num();
+        t = allocExpr(ConstK);
+        t->value = tokenNum();
         match(NUM);
         break;
     case ID:
-        t = alloc_expr(IdK);
-        t->name = token_id();
+        t = allocExpr(IdK);
+        t->name = tokenId();
         match(ID);
         break;
     case LP:
@@ -234,47 +234,47 @@ TreeNode * Parser::factor()
         match(RP);
         break;
     default:
-        syntax_error("unexpected token");
-        get_token();
+        syntaxError("unexpected token");
+        getToken();
         break;
     }
     return t;
 }
 
-TreeNode * Parser::alloc_stmtseq()
+TreeNode * Parser::allocStmtSeq()
 {
     TreeNode * t = new TreeNode;
     t->kind = StmtSeqK;
     return t;
 }
 
-TreeNode * Parser::alloc_stmt(StmtKind k)
+TreeNode * Parser::allocStmt(StmtKind k)
 {
     TreeNode * t = new TreeNode;
     t->kind = StmtK;
     t->stmt_kind = k;
-    t->line_no = token_line_no();
+    t->line_no = tokenLineNo();
     return t;
 }
 
-TreeNode * Parser::alloc_expr(ExprKind k)
+TreeNode * Parser::allocExpr(ExprKind k)
 {
     TreeNode * t = new TreeNode;
     t->kind = ExprK;
     t->expr_kind = k;
-    t->line_no = token_line_no();
+    t->line_no = tokenLineNo();
     return t;
 }
 
 void Parser::match(TokenType token)
 {
     if(token_ == token)
-        get_token();
+        getToken();
     else
-        syntax_error("unexpected token");
+        syntaxError("unexpected token");
 }
 
-void Parser::syntax_error(const char *err)
+void Parser::syntaxError(const char *err)
 {
     std::cout << "line: " << scanner_.line() << " >>>>>>>>>> " << err << std::endl;
     throw;

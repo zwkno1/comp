@@ -10,21 +10,21 @@ class Generator
 {
 public:
     Generator(Analyzer & analyzer, std::ostream & os = std::cout);
-    void gen_code();
+    void genCode();
 private:
-    void gen_code(TreeNode * t);
-    void gen_stmt_seq(TreeNode * t);
-    void gen_stmt(TreeNode * t);
-    void gen_expr(TreeNode * t);
+    void genCode(TreeNode * t);
+    void genStmtSeq(TreeNode * t);
+    void genStmt(TreeNode * t);
+    void genExpr(TreeNode * t);
 
-    size_t skip_location(size_t size);
-    void backup_location(size_t loc);
-    void restore_location();
-    void increase_location();
+    size_t skipLocation(size_t size);
+    void backupLocation(size_t loc);
+    void restoreLocation();
+    void increaseLocation();
 
-    void gen_ro(const char *op, int r, int s, int t);
-    void gen_rm(const char * op, int r, int d, int s);
-    void gen_rm_abs(const char *op, int r, int a);
+    void genRO(const char *op, int r, int s, int t);
+    void genRM(const char * op, int r, int d, int s);
+    void genRMAbs(const char *op, int r, int a);
 
     Analyzer & analyzer_;
 

@@ -37,28 +37,28 @@ Generator::Generator(Analyzer & analyzer, std::ostream & os)
 }
 
 
-void Generator::gen_code()
+void Generator::genCode()
 {
-    gen_rm("LD", mp, 0, ac);
-    gen_rm("ST", ac, 0, ac);
-    gen_code(analyzer_.root());
-    gen_ro("HALT", 0, 0, 0);
+    genRM("LD", mp, 0, ac);
+    genRM("ST", ac, 0, ac);
+    genCode(analyzer_.root());
+    genRO("HALT", 0, 0, 0);
 }
 
-void Generator::gen_code(TreeNode * t)
+void Generator::genCode(TreeNode * t)
 {
     if(t)
     {
         switch (t->kind)
         {
         case StmtSeqK:
-            gen_stmt_seq(t);
+            genStmtSeq(t);
             break;
         case ExprK:
-            gen_expr(t);
+            genExpr(t);
             break;
         case StmtK:
-            gen_stmt(t);
+            genStmt(t);
             break;
         default:
             break;
@@ -67,18 +67,18 @@ void Generator::gen_code(TreeNode * t)
     }
 }
 
-void Generator::gen_stmt_seq(TreeNode * t)
+void Generator::genStmtSeq(TreeNode * t)
 {
     TreeNode *child = t->child;
     while(child)
     {
-        gen_code(child);
+        genCode(child);
         child = child->sibling;
     }
 }
 
 
-void Generator::gen_stmt(TreeNode * t)
+void Generator::genStmt(TreeNode * t)
 {
     switch (t->stmt_kind)
     {
@@ -103,60 +103,60 @@ void Generator::gen_stmt(TreeNode * t)
          */
 
         /* generate code for test expression */
-        gen_code(t->child);
+        genCode(t->child);
 
         /* save location for if */
-        size_t loc1 = skip_location(1);
+        size_t loc1 = skipLocation(1);
 
         /* recurse on then part */
-        gen_code(t->child->sibling);
+        genCode(t->child->sibling);
 
         /* save location for esle */
-        size_t loc2 = skip_location(1);
+        size_t loc2 = skipLocation(1);
 
         /* generate code for if jmp */
-        size_t current_loc = skip_location(0);
-        backup_location(loc1);
-        gen_rm_abs("JEQ", ac, current_loc);
-        restore_location();
+        size_t current_loc = skipLocation(0);
+        backupLocation(loc1);
+        genRMAbs("JEQ", ac, current_loc);
+        restoreLocation();
 
         /* recurse on else part */
-        gen_code(t->child->sibling->sibling);
+        genCode(t->child->sibling->sibling);
 
         /* generate code for else jmp */
-        current_loc = skip_location(0);
-        backup_location(loc2);
-        gen_rm_abs("LDA", ac, current_loc);
-        restore_location();
+        current_loc = skipLocation(0);
+        backupLocation(loc2);
+        genRMAbs("LDA", ac, current_loc);
+        restoreLocation();
     }
         break;
     case RepeatK :
     {
         /* save location for repeat */
-        size_t loc = skip_location(0);
-        gen_code(t->child);
-        gen_code(t->child->sibling);
-        gen_rm_abs("JEQ", ac, loc);
+        size_t loc = skipLocation(0);
+        genCode(t->child);
+        genCode(t->child->sibling);
+        genRMAbs("JEQ", ac, loc);
     }
         break;
     case AssignK :
     {
-        gen_code(t->child);
-        size_t loc = analyzer_.find_symbol(t->name);
-        gen_rm("ST", ac, loc, gp);
+        genCode(t->child);
+        size_t loc = analyzer_.findSymbol(t->name);
+        genRM("ST", ac, loc, gp);
     }
         break;
     case ReadK :
     {
-        gen_ro("IN", ac, 0, 0);
-        size_t loc = analyzer_.find_symbol(t->name);
-        gen_rm("ST", ac, loc, gp);
+        genRO("IN", ac, 0, 0);
+        size_t loc = analyzer_.findSymbol(t->name);
+        genRM("ST", ac, loc, gp);
     }
         break;
     case WriteK :
     {
-        gen_code(t->child);
-        gen_ro("OUT", ac, 0, 0);
+        genCode(t->child);
+        genRO("OUT", ac, 0, 0);
     }
         break;
     default:
@@ -164,58 +164,58 @@ void Generator::gen_stmt(TreeNode * t)
     }
 }
 
-void Generator::gen_expr(TreeNode * t)
+void Generator::genExpr(TreeNode * t)
 {
     switch (t->expr_kind)
     {
     case ConstK:
     {
-        gen_rm("LDC", ac, t->value, 0);
+        genRM("LDC", ac, t->value, 0);
     }
         break;
     case IdK:
     {
-        size_t loc = analyzer_.find_symbol(t->name);
-        gen_rm("LD", ac, loc, gp);
+        size_t loc = analyzer_.findSymbol(t->name);
+        genRM("LD", ac, loc, gp);
     }
         break;
     case OpK:
     {
         /* gen code for ac = left arg */
-        gen_code(t->child);
+        genCode(t->child);
         /* gen code to push left operand */
-        gen_rm("ST", ac, tmp_offset_--, mp);
+        genRM("ST", ac, tmp_offset_--, mp);
         /* gen code for ac = right operand */
-        gen_code(t->child->sibling);
+        genCode(t->child->sibling);
         /* now load left operand */
-        gen_rm("LD",ac1,++tmp_offset_,mp);
+        genRM("LD",ac1,++tmp_offset_,mp);
         switch (t->op)
         {
         case ADD:
-            gen_ro("ADD", ac, ac1, ac);
+            genRO("ADD", ac, ac1, ac);
             break;
         case SUB:
-            gen_ro("SUB", ac, ac1, ac);
+            genRO("SUB", ac, ac1, ac);
             break;
         case MUL:
-            gen_ro("MUL", ac, ac1, ac);
+            genRO("MUL", ac, ac1, ac);
             break;
         case DIV:
-            gen_ro("DIV", ac, ac1, ac);
+            genRO("DIV", ac, ac1, ac);
             break;
         case LT :
-            gen_ro("SUB", ac, ac1, ac);
-            gen_rm("JLT", ac, 2, pc);
-            gen_rm("LDC", ac, 0, ac);
-            gen_rm("LDA", pc, 1, pc);
-            gen_rm("LDC", ac, 1, ac);
+            genRO("SUB", ac, ac1, ac);
+            genRM("JLT", ac, 2, pc);
+            genRM("LDC", ac, 0, ac);
+            genRM("LDA", pc, 1, pc);
+            genRM("LDC", ac, 1, ac);
             break;
          case EQ :
-            gen_ro("SUB", ac, ac1, ac);
-            gen_rm("JEQ", ac, 2, pc);
-            gen_rm("LDC", ac, 0, ac);
-            gen_rm("LDA", pc, 1, pc);
-            gen_rm("LDC", ac, 1, ac);
+            genRO("SUB", ac, ac1, ac);
+            genRM("JEQ", ac, 2, pc);
+            genRM("LDC", ac, 0, ac);
+            genRM("LDA", pc, 1, pc);
+            genRM("LDC", ac, 1, ac);
             break;
         default:
             break;
@@ -226,7 +226,7 @@ void Generator::gen_expr(TreeNode * t)
     }
 }
 
-size_t Generator::skip_location(size_t size)
+size_t Generator::skipLocation(size_t size)
 {
     size_t ret = current_location_;
     current_location_ += size;
@@ -235,40 +235,40 @@ size_t Generator::skip_location(size_t size)
     return ret;
 }
 
-void Generator::backup_location(size_t loc)
+void Generator::backupLocation(size_t loc)
 {
     current_location_ = loc;
 }
 
-void Generator::restore_location()
+void Generator::restoreLocation()
 {
     current_location_ = highest_location_;
 }
 
-void Generator::increase_location()
+void Generator::increaseLocation()
 {
     ++current_location_;
     if(highest_location_ < current_location_)
         highest_location_ = current_location_;
 }
 
-void Generator::gen_ro(const char *op, int r, int s, int t)
+void Generator::genRO(const char *op, int r, int s, int t)
 {
     os_ << std::setw(8) << current_location_ << ":    "
         << std::setw(4) << op << "    "
         << r << "," << s << "," << t << "\n";
-    increase_location();
+    increaseLocation();
 }
 
-void Generator::gen_rm(const char * op, int r, int d, int s)
+void Generator::genRM(const char * op, int r, int d, int s)
 {
     os_ << std::setw(8) << current_location_ << ":    "
         << std::setw(4) << op << "    "
         << r << "," << d << "(" << s << ")\n";
-    increase_location();
+    increaseLocation();
 }
 
-void Generator::gen_rm_abs(const char *op, int r, int a)
+void Generator::genRMAbs(const char *op, int r, int a)
 {
-    gen_rm(op, r, a-(current_location_+1), pc);
+    genRM(op, r, a-(current_location_+1), pc);
 }

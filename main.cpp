@@ -178,11 +178,11 @@ void parser_test(const std::string & file_path)
 
         Analyzer a(p);
         a.analysis();
-        a.print_symbol_table();
+        a.printSymbolTable();
         print_stmtseq(a.root());
 
         Generator g(a);
-        g.gen_code();
+        g.genCode();
     }
     catch(...)
     {
@@ -194,7 +194,6 @@ void parser_test(const std::string & file_path)
 
 int main(int argc, char *argv[])
 {
-    test::parser_test("/home/zwk/loucomp/comp/sample.tny");
     if(argc != 2)
         return -1;
     try
@@ -208,8 +207,9 @@ int main(int argc, char *argv[])
         Analyzer a(p);
         a.analysis();
 
-        Generator g(a);
-        g.gen_code();
+        std::ofstream ofs("a.tm");
+        Generator g(a, ofs);
+        g.genCode();
     }
     catch(...)
     {

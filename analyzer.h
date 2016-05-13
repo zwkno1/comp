@@ -24,23 +24,23 @@ public:
 
     TreeNode * root() { return parser_.root(); }
 
-    size_t find_symbol(const std::string & name);
+    size_t findSymbol(const std::string & name);
 
-    void print_symbol_table();
+    void printSymbolTable();
 
 private:
 
-    void type_check();
-    void build_symbol_table();
+    void typeCheck();
+    void buildSymbolTable();
 
     void traverse(TreeNode * t, auto pre, auto post);
-    void check_node(TreeNode * t);
-    void type_check_error(TreeNode * t, const char *);
+    void checkNode(TreeNode * t);
+    void typeCheckError(TreeNode * t, const char *);
 
-    void type_check(TreeNode * t);
-    void build_symbol_table(TreeNode * t);
+    void typeCheck(TreeNode * t);
+    void buildSymbolTable(TreeNode * t);
 
-    void insert_symbol(TreeNode * t);
+    void insertSymbol(TreeNode * t);
 
     Parser & parser_;
 

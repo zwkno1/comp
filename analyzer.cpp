@@ -10,32 +10,32 @@ Analyzer::Analyzer(Parser & parser)
 
 void Analyzer::analysis()
 {
-    type_check();
-    build_symbol_table();
+    typeCheck();
+    buildSymbolTable();
 }
 
-void Analyzer::type_check()
+void Analyzer::typeCheck()
 {
-    type_check(root());
+    typeCheck(root());
 }
 
-void Analyzer::build_symbol_table()
+void Analyzer::buildSymbolTable()
 {
-    build_symbol_table(root());
+    buildSymbolTable(root());
 }
 
-void Analyzer::type_check(TreeNode * t)
+void Analyzer::typeCheck(TreeNode * t)
 {
     traverse(t, [this](TreeNode *)
     {
     },
     [this](TreeNode * t)
     {
-        check_node(t);
+        checkNode(t);
     });
 }
 
-void Analyzer::build_symbol_table(TreeNode *t)
+void Analyzer::buildSymbolTable(TreeNode *t)
 {
     traverse(root(), [this](TreeNode *t)
     {
@@ -46,7 +46,7 @@ void Analyzer::build_symbol_table(TreeNode *t)
             {
             case AssignK:
             case ReadK:
-                insert_symbol(t);
+                insertSymbol(t);
                 break;
             default:
                 break;
@@ -56,7 +56,7 @@ void Analyzer::build_symbol_table(TreeNode *t)
             switch (t->expr_kind)
             {
             case IdK:
-                insert_symbol(t);
+                insertSymbol(t);
                 break;
             default:
                 break;
@@ -91,7 +91,7 @@ void Analyzer::traverse(TreeNode * t, auto pre, auto post)
 }
 
     
-void Analyzer::check_node(TreeNode * t)
+void Analyzer::checkNode(TreeNode * t)
 {
     switch (t->kind) 
     {
@@ -124,19 +124,19 @@ void Analyzer::check_node(TreeNode * t)
         {
         case IfK:
             if (t->child->expr_type != Boolean)
-                type_check_error(t->child, "if test is not Boolean");
+                typeCheckError(t->child, "if test is not Boolean");
             break;
         case RepeatK:
             if(t->child->sibling->expr_type != Boolean)
-                type_check_error(t->child, "repeat test is not Boolean");
+                typeCheckError(t->child, "repeat test is not Boolean");
             break;
         case AssignK:
             if(t->child->expr_type != Integer)
-                type_check_error(t->child, "assignment of non-integer value");
+                typeCheckError(t->child, "assignment of non-integer value");
             break;
         case WriteK:
             if(t->child->expr_type != Integer)
-                type_check_error(t->child, "write of non-integer value");
+                typeCheckError(t->child, "write of non-integer value");
             break;
         default:
             break;
@@ -147,13 +147,13 @@ void Analyzer::check_node(TreeNode * t)
     }
 }
 
-void Analyzer::type_check_error(TreeNode * t, const char * err)
+void Analyzer::typeCheckError(TreeNode * t, const char * err)
 {
     std::cout << "line " << t->line_no << " >>>> " << err <<std::endl;
     throw;
 }
 
-void Analyzer::insert_symbol(TreeNode * t)
+void Analyzer::insertSymbol(TreeNode * t)
 {
     auto it = symbol_table_.find(t->name);
     if(it == symbol_table_.end())
@@ -166,7 +166,7 @@ void Analyzer::insert_symbol(TreeNode * t)
     }
 }
 
-size_t Analyzer::find_symbol(const std::string & name)
+size_t Analyzer::findSymbol(const std::string & name)
 {
     auto iter = symbol_table_.find(name);
     if(iter != symbol_table_.end())
@@ -176,7 +176,7 @@ size_t Analyzer::find_symbol(const std::string & name)
     return 0;
 }
 
-void Analyzer::print_symbol_table()
+void Analyzer::printSymbolTable()
 {
     for(auto & i : symbol_table_)
     {
