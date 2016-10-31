@@ -5,16 +5,18 @@ project(comp)
 set(CMAKE_CXX_FLAGS "-std=c++14")
 add_definitions("-Wall -Werror")
 
-#set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Debug)
 
 include_directories(.)
+
 set(SRCS
-	analyzer.cpp
-	generator.cpp
-	main.cpp
-	parser.cpp
-	scanner.cpp
-	)
+    analyzer.cpp
+    generator.cpp
+    main.cpp
+    parser.cpp
+    lexer.cpp
+    token.cpp
+    )
 
 add_executable(
 	c
@@ -22,6 +24,7 @@ add_executable(
 	)
 	
 add_executable(
-	m
-	vm.cpp
-	)
+    m
+    vm.cpp
+    )
+

@@ -2,12 +2,12 @@
 #define PARSER_H
 
 #include "treenode.h"
-#include "scanner.h"
+#include "lexer.h"
 
 class Parser
 {
 public:
-    Parser(Scanner & s);
+    Parser(Lexer & s);
     void parse();
     TreeNode * root() { return root_; }
 
@@ -37,10 +37,10 @@ private:
 
     void match(TokenType token);
 
-    void syntaxError(const char * err);
+    void syntaxError(const std::string & err);
 
     TreeNode * root_;
-    Scanner & scanner_;
+    Lexer & scanner_;
     TokenType token_;
 };
 

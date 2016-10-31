@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
 
-#include "scanner.h"
 #include "parser.h"
 #include "analyzer.h"
 #include "generator.h"
@@ -13,7 +12,7 @@ namespace test
 void scanner_test(const std::string & file_path)
 {
     std::fstream fs(file_path);
-    Scanner s(fs);
+    Lexer s(fs);
 
     int token;
     do
@@ -172,7 +171,7 @@ void parser_test(const std::string & file_path)
     try
     {
         std::fstream fs(file_path);
-        Scanner s(fs);
+        Lexer s(fs);
         Parser p(s);
         p.parse();
 
@@ -199,7 +198,7 @@ int main(int argc, char *argv[])
     try
     {
         std::fstream f(argv[1]);
-        Scanner s(f);
+        Lexer s(f);
 
         Parser p(s);
         p.parse();
@@ -211,8 +210,9 @@ int main(int argc, char *argv[])
         Generator g(a, ofs);
         g.genCode();
     }
-    catch(...)
+    catch(const std::string & err)
     {
+        std::cout << err << std::endl;
         return -1;
     }
 

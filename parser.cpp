@@ -1,10 +1,11 @@
 #include "parser.h"
 
 #include <iostream>
+#include <sstream>
 
-#include "scanner.h"
+#include "lexer.h"
 
-Parser::Parser(Scanner & s)
+Parser::Parser(Lexer & s)
     : scanner_(s)
 {
 }
@@ -19,7 +20,7 @@ void Parser::parse()
     getToken();
     root_ = stmtSequence();
     if(token_ != ENDFILE)
-        syntaxError("unexpected token");
+        syntaxError(std::string("expect token: ") + getTokenStr(ENDFILE));
 }
 
 TreeNode * Parser::stmtSequence()
@@ -60,24 +61,17 @@ TreeNode * Parser::statement()
     {
     case IF:
         return ifStmt();
-        break;
     case REPEAT:
         return repeatStmt();
-        break;
     case ID:
         return assignStmt();
-        break;
     case READ:
         return readStmt();
-        break;
     case WRITE:
         return writeStmt();
-        break;
     default:
-        getToken();
-        syntaxError("unexpected token");
+        syntaxError(std::string("unexpected token: ") + getTokenStr(token_));
         return 0;
-        break;
     }
 }
 
@@ -234,7 +228,7 @@ TreeNode * Parser::factor()
         match(RP);
         break;
     default:
-        syntaxError("unexpected token");
+        syntaxError(std::string("unexpected token: ") + getTokenStr(token_));
         getToken();
         break;
     }
@@ -271,11 +265,12 @@ void Parser::match(TokenType token)
     if(token_ == token)
         getToken();
     else
-        syntaxError("unexpected token");
+        syntaxError(std::string("expect token: ") + getTokenStr(token) + ", current token: " + getTokenStr(token_));
 }
 
-void Parser::syntaxError(const char *err)
+void Parser::syntaxError(const std::string & err)
 {
-    std::cout << "line: " << scanner_.line() << " >>>>>>>>>> " << err << std::endl;
-    throw;
+    std::stringstream ss;
+    ss << "line: " << scanner_.line() << " >>>>>>>>>> " << err;
+    throw  ss.str();
 }
